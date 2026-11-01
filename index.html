@@ -291,8 +291,8 @@ function thinker(){
   add_(P_ell(Ab.p(0,.0,-.01),aRt,aUp,aFw,.15,.13,.12,.06));
   // pelvis & glutes
   add_(P_ell(V(0,.655,-.09),V(1,0,0),nrm(V(0,1,-.35)),nrm(V(0,.35,1)),.172,.115,.128,.06));
-  add_(P_ell(V(-.095,.585,-.13),V(1,0,0),UP,V(0,0,1),.12,.08,.125,.05));
-  add_(P_ell(V(.095,.592,-.13),V(1,0,0),UP,V(0,0,1),.12,.08,.125,.05));
+  add_(P_ell(V(-.095,.58,-.115),V(1,0,0),UP,V(0,0,1),.12,.075,.105,.07));
+  add_(P_ell(V(.095,.587,-.115),V(1,0,0),UP,V(0,0,1),.12,.075,.105,.07));
   // rectus abdominis: compressed, folding forward (3 rows)
   for(let r=0;r<3;r++){for(const s of [-1,1]){add_(P_ell(Ab.p(s*.042,.075-r*.06,.085-r*.004),aRt,aUp,aFw,.04,.032,.03,.03))}}
   // lower belly fold (crease where torso bends)
@@ -307,29 +307,29 @@ function thinker(){
   // serratus digitations on the left side (visible because torso twists)
   for(let i=0;i<3;i++)add_(P_ell(T.p(.14,.03-i*.045,.065),cRt,cUp,cFw,.018,.016,.025,.02));
   // back: one broad rounded shell first, then muscles laid on it with wide blends
-  add_(P_ell(T.p(0,.02,-.06),cRt,cUp,cFw,.19,.21,.12,.09));                 // the arched back as a single mass
-  add_(P_ell(Ab.p(0,.03,-.06),aRt,aUp,aFw,.15,.15,.095,.09));                // lower back: fills the waist so it doesn't step in
+  add_(P_ell(T.p(0,.0,-.06),cRt,cUp,cFw,.19,.23,.12,.12));                 // the arched back as a single mass
+  add_(P_ell(Ab.p(0,.05,-.05),aRt,aUp,aFw,.145,.16,.085,.12));                // lower back: fills the waist so it doesn't step in
   // erector spinae: thick only at the lumbar, fading up into the back
   {const dir=nrm(sub(J.T12,J.L3)),side=nrm(cross(dir,cFw));
     for(const s of [-1,1])add_(P_ell(madd(lerp(J.L3,J.T12,.55),side,s*.045,cFw,-.075),dir,side,cross(dir,side),.14,.036,.03,.07));
     }
   for(const s of [-1,1]){const sh=s<0?J.shR:J.shL;
     // scapula: broad flat plate
-    add_(P_ell(T.p(s*.1,.06,-.1),cRt,cUp,cFw,.09,.1,.03,.07));
+    add_(P_ell(T.p(s*.1,.07,-.1),cRt,cUp,cFw,.085,.09,.02,.09));
     // latissimus: wide sheet from lower back to armpit
-    add_(P_ell(lerp(T.p(s*.13,-.04,-.07),sh,.25),nrm(sub(sh,T.p(s*.05,-.12,-.09))),cRt,cFw,.18,.075,.05,.1));
+    add_(P_ell(lerp(T.p(s*.13,-.04,-.07),sh,.25),nrm(sub(sh,T.p(s*.05,-.12,-.09))),cRt,cFw,.18,.07,.04,.11));
     // trapezius: slopes from the neck down to the shoulder, never above it
     {const a0=madd(J.C7,cFw,-.035,cUp,.01),a1=madd(sh,cUp,-.005,cFw,-.03);const ax=nrm(sub(a1,a0));const nn=nrm(sub(cUp,mul(ax,dot(cUp,ax))));
       add_(P_ell(lerp(a0,a1,.45),ax,nn,cross(ax,nn),len(sub(a1,a0))*.55,.035,.06,.08))}
     // deltoid
     const dc=madd(sh,cUp,.01,cRt,s*.022);add_(P_ell(dc,cRt,cUp,cFw,.076,.082,.08,.045));
     // teres / infraspinatus rounding the shoulder from behind
-    add_(P_ell(T.p(s*.16,.06,-.07),cRt,cUp,cFw,.05,.06,.045,.06));
+    add_(P_ell(T.p(s*.15,.07,-.05),cRt,cUp,cFw,.04,.045,.028,.08));
   }
   // thoracic paraspinals: low ridges that leave a soft valley over the spine
   for(const s of [-1,1])add_(P_ell(T.p(s*.038,-.01,-.165),cRt,cUp,cFw,.03,.15,.022,.06));
   // flanks: keep the waist full from behind
-  for(const s of [-1,1])add_(P_ell(Ab.p(s*.13,.07,-.03),aRt,aUp,aFw,.05,.11,.075,.08));
+  for(const s of [-1,1])add_(P_ell(Ab.p(s*.13,.07,.0),aRt,aUp,aFw,.05,.11,.06,.08));
   // middle trapezius between the shoulder blades
   add_(P_ell(T.p(0,.1,-.1),cRt,cUp,cFw,.1,.075,.035,.07));
   // clavicles
@@ -958,7 +958,7 @@ function updateCam(dt){const k=1-Math.pow(.0016,dt);const g=cam.goal,L=cam.lim;
   cam.t.lerp(g.t,k);cam.d=lerp(cam.d,g.d,k);cam.az=lerp(cam.az,g.az,k);cam.el=lerp(cam.el,g.el,k);
   const ce=Math.cos(cam.el);const p=V3(cam.t.x+cam.d*Math.sin(cam.az)*ce,cam.t.y+cam.d*Math.sin(cam.el),cam.t.z+cam.d*Math.cos(cam.az)*ce);
   // never let the camera pass into the statue: stop just in front of the surface between target and eye
-  if(collide.length&&cam.d<2.6){if(++camHitN%3===0||camHitD<0){const dir=p.clone().sub(cam.t).normalize();ray.set(cam.t.clone().addScaledVector(dir,.02),dir);ray.near=0;ray.far=cam.d;const h=ray.intersectObjects(collide,false)[0];camHitD=h?Math.max(.1,h.distance+.02-.07):1e9;ray.far=Infinity}
+  if(collide.length&&cam.focus==='close'){if(++camHitN%3===0||camHitD<0){const dir=p.clone().sub(cam.t).normalize();ray.set(cam.t.clone().addScaledVector(dir,.02),dir);ray.near=0;ray.far=cam.d;const h=ray.intersectObjects(collide,false)[0];camHitD=h?Math.max(.1,h.distance+.02-.07):1e9;ray.far=Infinity}
     if(camHitD<cam.d)p.copy(cam.t).addScaledVector(p.clone().sub(cam.t).normalize(),camHitD)}else camHitD=-1;
   p.x=clamp(p.x,-ROOM.x+.3,ROOM.x-.3);p.z=clamp(p.z,ROOM.zb+.4,ROOM.zf-.3);p.y=clamp(p.y,.25,ROOM.h-.3);
   camera.position.copy(p);camera.lookAt(cam.t)}
