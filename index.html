@@ -723,7 +723,7 @@ function reliefMaps(w,h,seed,count,scale){
 
 /* ---------------- bronze material ---------------- */
 const NOISE_GLSL=`
-float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float h3(vec3 p){p=fract(p*.1031);p+=dot(p,p.zyx+31.32);return fract((p.x+p.y)*p.z);}
 float vn3(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
  return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),mix(mix(h3(i+vec3(0,0,1)),h3(i+vec3(1,0,1)),f.x),mix(h3(i+vec3(0,1,1)),h3(i+vec3(1,1,1)),f.x),f.y),f.z);}`;
 function bronzeMaterial(o){o=o||{};
@@ -733,10 +733,10 @@ function bronzeMaterial(o){o=o||{};
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float wear;varying float vWear;varying vec3 vObj;')
       .replace('#include <begin_vertex>','#include <begin_vertex>\nvWear=wear;vObj=position;');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying float vWear;varying vec3 vObj;uniform float uBump;'+NOISE_GLSL)
-      .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.2,vWear)*(.85+.3*vn3(vObj*90.));')
+      .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.2,vWear)*(.88+.24*vn3(vObj*60.));')
       .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
- { float hh=vn3(vObj*48.)*.55+vn3(vObj*130.)*.3+vn3(vObj*330.)*.15;
-   vec2 dH=vec2(dFdx(hh),dFdy(hh))*.0016*uBump*(1.-vWear*.6);
+ { float hh=vn3(vObj*38.)*.6+vn3(vObj*95.+7.)*.3+vn3(vObj*210.+3.)*.1;
+   vec2 dH=vec2(dFdx(hh),dFdy(hh))*.0012*uBump*(1.-vWear*.6);
    vec3 sp=-vViewPosition;vec3 sx=dFdx(sp),sy=dFdy(sp);vec3 R1=cross(sy,normal),R2=cross(normal,sx);float det=dot(sx,R1);
    vec3 gr=sign(det)*(dH.x*R1+dH.y*R2);normal=normalize(abs(det)*normal-gr); }`)};
   return m}
@@ -896,7 +896,7 @@ const STAT_C=V3(0,PED_H+.72*SC,.12*SC);           // visual centre of the statue
 const key=new THREE.SpotLight(0xffd9ad,170,0,.46,.55,1.5);key.castShadow=true;key.shadow.mapSize.set(touch?1024:2048,touch?1024:2048);key.shadow.bias=-.00025;key.shadow.normalBias=.012;key.shadow.camera.near=1;key.shadow.camera.far=14;
 key.target.position.copy(STAT_C).add(V3(0,-.35,.15));scene.add(key,key.target);
 function placeKey(deg){const a=deg*Math.PI/180,R=4.3;key.position.set(Math.sin(a)*R,5.3,PED.z+Math.cos(a)*R)}
-const rim=new THREE.SpotLight(0x9fb4ff,140,0,.42,.7,1.5);rim.position.set(-2.6,5.6,-3.6);rim.target.position.copy(STAT_C);scene.add(rim,rim.target);
+const rim=new THREE.SpotLight(0xc9d2e6,105,0,.42,.7,1.5);rim.position.set(-2.6,5.6,-3.6);rim.target.position.copy(STAT_C);scene.add(rim,rim.target);
 const rim2=new THREE.SpotLight(0xffe2c0,70,0,.4,.8,1.5);rim2.position.set(3.4,4.2,-2.4);rim2.target.position.copy(STAT_C);scene.add(rim2,rim2.target);
 const gateLight=new THREE.SpotLight(0xffc98a,240,0,.62,.6,1.4);gateLight.position.set(0,ROOM.h-.3,GATE.z+5.2);gateLight.target.position.set(0,3.9,GATE.z);gateLight.castShadow=true;gateLight.shadow.mapSize.set(touch?1024:2048,touch?1024:2048);gateLight.shadow.bias=-.0004;scene.add(gateLight,gateLight.target);
 const topLight=new THREE.SpotLight(0xffe0b0,120,0,.3,.6,1.3);topLight.position.set(1.2,ROOM.h-.2,GATE.z+3.4);topLight.target.position.set(0,6.9,GATE.z);scene.add(topLight,topLight.target);
@@ -915,7 +915,7 @@ const dust=(()=>{const n=touch?160:260;const g=new THREE.BufferGeometry();const 
 
 /* ================= STATUE (filled in once the workers finish) ================= */
 const statue=new THREE.Group();statue.position.set(0,PED_H+.065*SC,0);statue.scale.setScalar(SC);scene.add(statue);
-let thinkerMesh=null,hoverProxy=null,castT=-1;const bronzeMats=[];
+let thinkerMesh=null,hoverProxy=null,castT=-1;const collide=[];const bronzeMats=[];
 function addStatue(res){
   const mat=bronzeMaterial({bump:1});bronzeMats.push(mat);
   const gT=bronzeGeometry(res.thinker),gR=bronzeGeometry(res.rock,{curv:30,base:'#36261a'}),gS=bronzeGeometry(res.small),gH=bronzeGeometry(res.shade,{curv:30});
@@ -925,6 +925,8 @@ function addStatue(res){
   const gm=bronzeMaterial({bump:.6});bronzeMats.push(gm);
   const poet=new THREE.Group();poet.scale.setScalar(.48);poet.position.y=.065*.48;poet.add(new THREE.Mesh(gS,gm),new THREE.Mesh(gR,gm));poet.traverse(o=>{if(o.isMesh)o.castShadow=o.receiveShadow=true});poetAnchor.add(poet);
   for(const [x,z,ry] of [[-.5,.05,.75],[0,-.2,0],[.5,.05,-.75]]){const s=new THREE.Mesh(gH,gm);s.scale.setScalar(.58);s.position.set(x,0,z);s.rotation.y=ry;s.castShadow=s.receiveShadow=true;shadesAnchor.add(s)}
+  // low-res copy of the figure (and the rock) used only to keep the camera outside the bronze
+  for(const g of [gS,gR]){const c=new THREE.Mesh(g,new THREE.MeshBasicMaterial({visible:false}));statue.add(c);collide.push(c)}
   const bb=gT.boundingBox,proxy=new THREE.Mesh(new THREE.BoxGeometry(bb.max.x-bb.min.x,bb.max.y-bb.min.y,bb.max.z-bb.min.z),new THREE.MeshBasicMaterial({visible:false}));
   bb.getCenter(proxy.position);proxy.userData={type:'statue'};statue.add(proxy);hoverProxy=proxy;
   castT=0;reshadow()}
@@ -936,6 +938,7 @@ const VIEWS={
   gates:{t:V3(0,5.25,GATE.z),d:8.4,az:0,el:.1,dMin:3.2,dMax:9,elMin:-.15,elMax:.5,azMin:-.75,azMax:.75},
   door:{t:V3(0,1.9,ROOM.zf),d:4.2,az:Math.PI,el:.05,dMin:2.2,dMax:6,elMin:-.1,elMax:.6,azMin:Math.PI-.8,azMax:Math.PI+.8},
   plaque:{t:V3(0,PLQ.y+.12,PLQ.z),d:1.7,az:0,el:.16,dMin:.8,dMax:3,elMin:-.1,elMax:.8,azMin:-1.1,azMax:1.1}};
+let camHitN=0,camHitD=-1;
 const cam={t:VIEWS.main.t.clone(),d:6.5,az:.7,el:.25,goal:{t:VIEWS.main.t.clone(),d:VIEWS.main.d,az:VIEWS.main.az,el:VIEWS.main.el},lim:VIEWS.main,focus:'main',vaz:0,vel:0,drag:false,auto:true};
 const portrait=()=>camera.aspect<.95;
 function setView(name,over){const v=VIEWS[name]||over;cam.focus=name;cam.lim=v;cam.goal.t.copy(v.t);cam.goal.d=v.d*(portrait()&&name!=='close'?1.32:1);cam.goal.el=v.el;
@@ -943,14 +946,20 @@ function setView(name,over){const v=VIEWS[name]||over;cam.focus=name;cam.lim=v;c
   // keep the shortest way round
   let az=v.az;while(az-cam.az>Math.PI)az-=TAU;while(az-cam.az<-Math.PI)az+=TAU;cam.goal.az=az;cam.vaz=cam.vel=0;renderHUD()}
 function closeUp(target,dir,dist){const az=Math.atan2(dir.x,dir.z),el=clamp(Math.asin(clamp(dir.y,-1,1)),-.35,.85);
-  setView('close',{t:target.clone(),d:dist,az,el,dMin:.35,dMax:2.6,elMin:-.5,elMax:1.2})}
+  setView('close',{t:target.clone(),d:dist,az,el,dMin:.35,dMax:2.6,elMin:-.5,elMax:1.2,n:dir.clone().normalize()})}
 function updateCam(dt){const k=1-Math.pow(.0016,dt);const g=cam.goal,L=cam.lim;
   if(!cam.drag){g.az+=cam.vaz*dt;g.el+=cam.vel*dt;const dec=Math.pow(.04,dt);cam.vaz*=dec;cam.vel*=dec}
   if(cam.auto)g.az+=dt*(S.escaped?.05:.08);
   if(L.azMin!=null){const mid=(L.azMin+L.azMax)/2;let rel=g.az-mid;while(rel>Math.PI)rel-=TAU;while(rel<-Math.PI)rel+=TAU;rel=clamp(rel,L.azMin-mid,L.azMax-mid);g.az=mid+rel}
-  g.el=clamp(g.el,L.elMin,L.elMax);g.d=clamp(g.d,L.dMin,L.dMax*(portrait()?1.32:1));
+  g.el=clamp(g.el,L.elMin,L.elMax);
+  // close-up: stay on the outside of the surface we walked up to
+  if(L.n){const ce0=Math.cos(g.el);if(Math.sin(g.az)*ce0*L.n.x+Math.sin(g.el)*L.n.y+Math.cos(g.az)*ce0*L.n.z<.2){g.az=cam.pAz;g.el=cam.pEl;cam.vaz=cam.vel=0}}
+  cam.pAz=g.az;cam.pEl=g.el;g.d=clamp(g.d,L.dMin,L.dMax*(portrait()?1.32:1));
   cam.t.lerp(g.t,k);cam.d=lerp(cam.d,g.d,k);cam.az=lerp(cam.az,g.az,k);cam.el=lerp(cam.el,g.el,k);
   const ce=Math.cos(cam.el);const p=V3(cam.t.x+cam.d*Math.sin(cam.az)*ce,cam.t.y+cam.d*Math.sin(cam.el),cam.t.z+cam.d*Math.cos(cam.az)*ce);
+  // never let the camera pass into the statue: stop just in front of the surface between target and eye
+  if(collide.length&&cam.d<2.6){if(++camHitN%3===0||camHitD<0){const dir=p.clone().sub(cam.t).normalize();ray.set(cam.t.clone().addScaledVector(dir,.02),dir);ray.near=0;ray.far=cam.d;const h=ray.intersectObjects(collide,false)[0];camHitD=h?Math.max(.1,h.distance+.02-.07):1e9;ray.far=Infinity}
+    if(camHitD<cam.d)p.copy(cam.t).addScaledVector(p.clone().sub(cam.t).normalize(),camHitD)}else camHitD=-1;
   p.x=clamp(p.x,-ROOM.x+.3,ROOM.x-.3);p.z=clamp(p.z,ROOM.zb+.4,ROOM.zf-.3);p.y=clamp(p.y,.25,ROOM.h-.3);
   camera.position.copy(p);camera.lookAt(cam.t)}
 
